@@ -53,10 +53,18 @@ def send_to_chatGpt(messages, model=MODEL):
                 summary_results = []
                 for idx, chunk in enumerate(chunks, 1):
                     print(f"📄 TXT 조각 {idx}/{len(chunks)} 분석 중...")
+
+                    # ✅ 조각 분석 요청 문구 수정
+                    part_prompt = (
+                        "아래는 문서 일부입니다. 이 조각은 전체 문서의 일부분이며, 누락된 부분은 없습니다.\n"
+                        "지금은 조각별 핵심 요약만 해주세요. 과도한 가이드, '1/2 2/2' 같은 표현 금지.\n\n"
+                        f"{chunk}"
+                    )
+
                     response = client.responses.create(
                         model=model,
                         input=[{"role": "user", "content": [
-                            {"type": "input_text", "text": f"[TXT {idx}/{len(chunks)}]\n{chunk}"}
+                            {"type": "input_text", "text": part_prompt}
                         ]}],
                         max_output_tokens=4000,
                     )
@@ -69,10 +77,12 @@ def send_to_chatGpt(messages, model=MODEL):
                     summary_results.append(part_text or "")
                     time.sleep(1)  # API 과부하 방지
 
-                # 조각 요약본을 통합 분석
+                # ✅ 최종 통합 지시 수정 (불필요 안내 금지)
                 final_prompt = (
-                    "다음은 여러 TXT 조각 분석 결과입니다.\n"
-                    "이 전체 내용을 종합적으로 요약 및 분석해주세요.\n\n"
+                    "지금까지 조각별 요약 결과입니다. 이 내용은 전체 문서를 모두 포함합니다.\n"
+                    "이제 아래 내용을 바탕으로 전체 문서를 종합 분석해주세요.\n"
+                    "※ '문맥상 1/2, 2/2' 안내 문구 금지\n"
+                    "※ 추론, 통찰 중심으로 답변\n\n"
                     + "\n\n".join(summary_results)
                 )
                 blocks.append({"type": "input_text", "text": final_prompt})
