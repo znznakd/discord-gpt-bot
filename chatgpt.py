@@ -58,7 +58,7 @@ def send_to_chatGpt(messages, model=MODEL):
                         input=[{"role": "user", "content": [
                             {"type": "input_text", "text": f"[TXT {idx}/{len(chunks)}]\n{chunk}"}
                         ]}],
-                        max_output_tokens=2500,
+                        max_output_tokens=4000,
                     )
                     part_text = getattr(response, "output_text", None)
                     if not part_text and hasattr(response, "output"):
