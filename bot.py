@@ -43,7 +43,7 @@ user_histories = load_histories()
 # 이름 추출
 # -----------------------------
 def extract_name(display_name: str) -> str:
-    prefixes = ["매니저_", "교육생_", "멘토_", "운영자_"]
+    prefixes = ["매니저_", "교육생_", "멘토_", "강사_"]
     for p in prefixes:
         if display_name.startswith(p):
             return display_name.replace(p, "")
@@ -141,21 +141,42 @@ async def on_message(message):
         user_histories[user_name].append(content)
 
         # GPT 호출 (비동기)
-        await message.channel.send("🔎 GPT가 생각 중입니다... 잠시만 기다려주세요.")
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, send_to_chatGpt, get_recent_context(user_histories[user_name]))
 
         user_histories[user_name].append({"role": "assistant", "content": response})
         save_histories(user_histories)
 
-        # Discord 메시지 분할 전송 (길이 초과 방지)
-        if response and response.strip():
-            chunks = [response[i:i+1900] for i in range(0, len(response), 1900)]
-            for i, chunk in enumerate(chunks, 1):
-                header = f"💬 {user_name} ({i}/{len(chunks)})" if len(chunks) > 1 else f"💬 {user_name}"
-                await message.channel.send(f"{header}\n```{chunk}```")
-        else:
+        # -----------------------------
+        # 📎 응답 처리 방식 분기
+        # -----------------------------
+        if not response or not response.strip():
             await message.channel.send("⚠️ GPT 응답이 비어있습니다.")
+            return
+
+        # 일정 길이 이상이면 파일로 전달
+        if len(response) > 1500:
+            try:
+                safe_name = user_name.replace("/", "_").replace("\\", "_")
+                filename = f"{safe_name}_GPT_분석결과.txt"
+                with open(filename, "w", encoding="utf-8") as f:
+                    f.write(response)
+
+                await message.channel.send(
+                    f"📎 {user_name}님, 내용이 길어서 텍스트 파일로 정리했습니다.",
+                    file=discord.File(filename)
+                )
+
+                os.remove(filename)  # 파일 삭제
+                return  # 💡 여기서 return → 위에 메시지로는 안 보냄
+            except Exception as fe:
+                print(f"⚠️ 파일 생성/전송 오류: {fe}", flush=True)
+
+        # 짧은 답변은 Discord 메시지로 출력
+        chunks = [response[i:i+1900] for i in range(0, len(response), 1900)]
+        for i, chunk in enumerate(chunks, 1):
+            header = f"💬 {user_name} ({i}/{len(chunks)})" if len(chunks) > 1 else f"💬 {user_name}"
+            await message.channel.send(f"{header}\n```{chunk}```")
 
     except Exception as e:
         print("❌ on_message 에러:", e, flush=True)
@@ -163,4 +184,3 @@ async def on_message(message):
 
 # 실행
 client.run(DISCORD_TOKEN)
-
