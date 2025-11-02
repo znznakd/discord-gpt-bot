@@ -141,7 +141,7 @@ async def on_message(message):
         user_histories[user_name].append(content)
 
         # GPT 호출 (비동기)
-        await message.channel.send("🔎 GPT가 분석 중입니다... 잠시만 기다려주세요.")
+        await message.channel.send("🔎 GPT가 생각 중입니다... 잠시만 기다려주세요.")
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, send_to_chatGpt, get_recent_context(user_histories[user_name]))
 
@@ -163,3 +163,4 @@ async def on_message(message):
 
 # 실행
 client.run(DISCORD_TOKEN)
+
